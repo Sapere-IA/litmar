@@ -52,9 +52,19 @@ class Fuente(ABC):
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> Any:
+        """GET con reintentos que devuelve el cuerpo como JSON."""
+        return self._get(url, params=params, headers=headers).json()
+
+    def _get(
+        self,
+        url: str,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> httpx.Response:
         """GET con reintentos. Lanza httpx.HTTPStatusError o httpx.TransportError si se agotan."""
         for intento in range(self.max_retries + 1):
             ultimo = intento == self.max_retries
+            self._antes_de_peticion()
             try:
                 respuesta = self.client.get(url, params=params, headers=headers)
             except httpx.TransportError:  # timeout, conexión rechazada, DNS...
@@ -64,7 +74,7 @@ class Fuente(ABC):
             else:
                 if respuesta.status_code not in ESTADOS_REINTENTABLES or ultimo:
                     respuesta.raise_for_status()
-                    return respuesta.json()
+                    return respuesta
                 espera = self._espera_retry_after(respuesta)
                 if espera is None:
                     espera = self._espera_exponencial(intento)
@@ -73,6 +83,12 @@ class Fuente(ABC):
                     respuesta.raise_for_status()
             self._sleep(espera)
         raise AssertionError("inalcanzable")
+
+    def _antes_de_peticion(self) -> None:
+        """Se llama antes de cada intento, reintentos incluidos.
+
+        No hace nada por defecto; las fuentes con un ritmo máximo (arXiv) la usan para esperar.
+        """
 
     def _espera_exponencial(self, intento: int) -> float:
         return self.backoff * 2**intento
