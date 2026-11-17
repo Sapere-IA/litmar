@@ -1,0 +1,85 @@
+[
+  {
+    "key": "ABCD2345",
+    "version": 12,
+    "library": {"type": "user", "id": 1234567, "name": "ejemplo"},
+    "meta": {"creatorSummary": "Gurzki and Woisetschläger", "parsedDate": "2017-02", "numChildren": 1},
+    "data": {
+      "key": "ABCD2345",
+      "version": 12,
+      "itemType": "journalArticle",
+      "title": "Mapping the luxury research landscape: A bibliometric citation analysis",
+      "creators": [
+        {"creatorType": "author", "firstName": "Hannes", "lastName": "Gurzki"},
+        {"creatorType": "author", "firstName": "David M.", "lastName": "Woisetschläger"}
+      ],
+      "abstractNote": "Luxury research has grown considerably.",
+      "publicationTitle": "Journal of Business Research",
+      "date": "February 2017",
+      "DOI": "10.1016/j.jbusres.2016.11.009",
+      "extra": "",
+      "tags": [{"tag": "bibliometrics"}]
+    }
+  },
+  {
+    "key": "EFGH6789",
+    "version": 15,
+    "library": {"type": "user", "id": 1234567, "name": "ejemplo"},
+    "meta": {"creatorSummary": "World Health Organization", "parsedDate": "2020", "numChildren": 0},
+    "data": {
+      "key": "EFGH6789",
+      "version": 15,
+      "itemType": "report",
+      "title": "Citation practices in public health reports",
+      "creators": [
+        {"creatorType": "author", "name": "World Health Organization"}
+      ],
+      "abstractNote": "",
+      "institution": "WHO",
+      "date": "2020",
+      "extra": "Original title: Prácticas de citación\nDOI: 10.5555/WHO.2020.001",
+      "tags": []
+    }
+  },
+  {
+    "key": "IJKL2345",
+    "version": 16,
+    "library": {"type": "user", "id": 1234567, "name": "ejemplo"},
+    "meta": {"creatorSummary": "Moed", "parsedDate": "2005", "numChildren": 0},
+    "data": {
+      "key": "IJKL2345",
+      "version": 16,
+      "itemType": "book",
+      "title": "Citation Analysis in Research Evaluation",
+      "creators": [
+        {"creatorType": "author", "firstName": "Henk F.", "lastName": "Moed"}
+      ],
+      "abstractNote": "",
+      "publisher": "Springer",
+      "date": "2005",
+      "extra": "",
+      "tags": []
+    }
+  },
+  {
+    "key": "MNOP6789",
+    "version": 18,
+    "library": {"type": "user", "id": 1234567, "name": "ejemplo"},
+    "meta": {"creatorSummary": "Glänzel and Moed", "numChildren": 0},
+    "data": {
+      "key": "MNOP6789",
+      "version": 18,
+      "itemType": "bookSection",
+      "title": "Handbook of Quantitative Science and Technology Research",
+      "creators": [
+        {"creatorType": "editor", "firstName": "Wolfgang", "lastName": "Glänzel"},
+        {"creatorType": "editor", "firstName": "Henk F.", "lastName": "Moed"}
+      ],
+      "abstractNote": "",
+      "date": "",
+      "DOI": "10.1007/1-4020-2755-9",
+      "extra": "",
+      "tags": []
+    }
+  }
+]
