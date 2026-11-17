@@ -124,3 +124,44 @@ def test_extraer_anio():
     assert extraer_anio({"meta": {"parsedDate": "2016-03-01"}}) == 2016
     assert extraer_anio({"meta": {}, "data": {"date": "Spring 2019"}}) == 2019
     assert extraer_anio({"data": {"date": ""}}) is None
+
+
+# --- Configuración desde .env -------------------------------------------------
+
+
+def test_desde_entorno_lee_el_fichero_env(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text(
+        '# comentario\nZOTERO_LIBRARY_ID=1234567\nexport ZOTERO_API_KEY="secreta"\n\n',
+        encoding="utf-8",
+    )
+    z = Zotero.desde_entorno(env, entorno={})
+    assert (z.library_id, z.library_type, z.api_key) == ("1234567", "user", "secreta")
+
+
+def test_desde_entorno_las_variables_mandan_sobre_el_fichero(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text("ZOTERO_LIBRARY_ID=111\nZOTERO_API_KEY=del-fichero\n", encoding="utf-8")
+    z = Zotero.desde_entorno(env, entorno={"ZOTERO_LIBRARY_ID": "222", "ZOTERO_LIBRARY_TYPE": "group"})
+    assert (z.library_id, z.library_type, z.api_key) == ("222", "group", "del-fichero")
+
+
+def test_desde_entorno_sin_fichero_ni_variables(tmp_path):
+    with pytest.raises(ValueError, match="ZOTERO_LIBRARY_ID"):
+        Zotero.desde_entorno(tmp_path / "no-existe.env", entorno={})
+
+
+def test_desde_entorno_clave_vacia_es_none(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text("ZOTERO_LIBRARY_ID=1\nZOTERO_API_KEY=\n", encoding="utf-8")
+    assert Zotero.desde_entorno(env, entorno={}).api_key is None
+
+
+def test_desde_entorno_usa_la_biblioteca_configurada(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text("ZOTERO_LIBRARY_ID=7654321\nZOTERO_API_KEY=secreta\n", encoding="utf-8")
+    peticiones = []
+    z = Zotero.desde_entorno(env, entorno={}, client=cliente([], peticiones=peticiones))
+    z.buscar("x")
+    assert peticiones[0].url.path == "/users/7654321/items/top"
+    assert peticiones[0].headers["zotero-api-key"] == "secreta"

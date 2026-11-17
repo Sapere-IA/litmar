@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import re
-from typing import Any, Literal
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any, Literal, Self
 
 from litmar.articulo import Articulo
 from litmar.fuentes.base import Fuente
@@ -48,6 +51,34 @@ class Zotero(Fuente):
         self.library_id = str(library_id)
         self.library_type = library_type
         self.api_key = api_key
+
+    @classmethod
+    def desde_entorno(
+        cls,
+        ruta_env: str | Path = ".env",
+        entorno: Mapping[str, str] | None = None,
+        **kwargs: Any,
+    ) -> Self:
+        """Crea la fuente con la biblioteca configurada fuera del código.
+
+        Lee ZOTERO_LIBRARY_ID (obligatoria), ZOTERO_API_KEY y ZOTERO_LIBRARY_TYPE
+        («user» por defecto) de las variables de entorno y, si faltan, del fichero
+        `ruta_env`. El .env está en .gitignore: la clave nunca llega a GitHub.
+        """
+        valores = leer_env(ruta_env)
+        valores.update({k: v for k, v in (os.environ if entorno is None else entorno).items() if v})
+        library_id = valores.get("ZOTERO_LIBRARY_ID")
+        if not library_id:
+            raise ValueError(
+                f"Falta ZOTERO_LIBRARY_ID: defínela en {ruta_env} o como variable de entorno "
+                "(ver .env.example)"
+            )
+        return cls(
+            library_id,
+            library_type=valores.get("ZOTERO_LIBRARY_TYPE", "user"),
+            api_key=valores.get("ZOTERO_API_KEY") or None,
+            **kwargs,
+        )
 
     @property
     def url_items(self) -> str:
@@ -144,3 +175,25 @@ def extraer_anio(elemento: dict[str, Any]) -> int | None:
         if texto and (coincidencia := _ANIO.search(texto)):
             return int(coincidencia.group(1))
     return None
+
+
+def leer_env(ruta: str | Path) -> dict[str, str]:
+    """Lee un fichero .env sencillo (CLAVE=valor por línea); {} si no existe.
+
+    Ignora líneas vacías y comentarios (#), admite «export » delante y valores
+    entre comillas. Basta para configurar Zotero sin añadir dependencias.
+    """
+    ruta = Path(ruta)
+    if not ruta.is_file():
+        return {}
+    valores: dict[str, str] = {}
+    for linea in ruta.read_text(encoding="utf-8").splitlines():
+        linea = linea.strip()
+        if not linea or linea.startswith("#") or "=" not in linea:
+            continue
+        clave, valor = linea.removeprefix("export ").split("=", 1)
+        valor = valor.strip()
+        if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in "\"'":
+            valor = valor[1:-1]
+        valores[clave.strip()] = valor
+    return valores
