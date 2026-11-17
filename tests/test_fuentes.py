@@ -1,4 +1,4 @@
-"""Tests de Fuente y OpenAlex. Ninguno usa la red: httpx.MockTransport responde en su lugar."""
+"""Tests de Fuente, OpenAlex y Crossref. Ninguno usa la red: httpx.MockTransport responde en su lugar."""
 
 import json
 from pathlib import Path
@@ -6,16 +6,28 @@ from pathlib import Path
 import httpx
 import pytest
 
-from litmar.fuentes import Fuente, OpenAlex
+from litmar.fuentes import Crossref, Fuente, OpenAlex
+from litmar.fuentes.crossref import a_articulo as crossref_a_articulo
+from litmar.fuentes.crossref import limpiar_jats
 from litmar.fuentes.openalex import reconstruir_resumen
+
+DATOS = Path(__file__).parent / "datos"
 
 # Respuesta real de
 # GET /works?search=bibliometrics citation analysis&per_page=3&select=...
 # guardada el 2026-11-17. Contiene una obra sin DOI, que debe descartarse.
-RESPUESTA_OPENALEX = json.loads(
-    (Path(__file__).parent / "datos" / "openalex_works.json").read_text(encoding="utf-8")
-)
+RESPUESTA_OPENALEX = json.loads((DATOS / "openalex_works.json").read_text(encoding="utf-8"))
 VACIA = {"meta": {}, "results": []}
+
+# Respuestas reales de Crossref, guardadas el 2026-11-17 con
+# GET /works?query=citation analysis bibliometrics&filter=type:journal-article
+#     &rows=4&cursor=*&sort=relevance&order=desc&select=...
+# La segunda añade has-abstract:1 al filtro y rows=2: trae un resumen en JATS
+# y una obra sin autores, que debe descartarse.
+RESPUESTA_CROSSREF = json.loads((DATOS / "crossref_works.json").read_text(encoding="utf-8"))
+RESPUESTA_CROSSREF_CON_RESUMEN = json.loads(
+    (DATOS / "crossref_works_con_resumen.json").read_text(encoding="utf-8")
+)
 
 
 def cliente(*respuestas, peticiones=None):
@@ -183,3 +195,173 @@ def test_reconstruir_resumen():
     indice = {"in": [3, 5], "Despite": [0], "growing": [1], "interest": [2], "AI": [4], "ethics": [6]}
     assert reconstruir_resumen(indice) == "Despite growing interest in AI in ethics"
     assert reconstruir_resumen(None) == ""
+
+
+# --- Crossref -----------------------------------------------------------------
+
+
+def pagina_crossref(items, siguiente="siguiente"):
+    return {"status": "ok", "message": {"items": items, "next-cursor": siguiente}}
+
+
+def item_crossref(i, **cambios):
+    item = {
+        "DOI": f"10.9999/{i}",
+        "title": [f"Obra {i}"],
+        "author": [{"family": "García", "given": "Ana"}],
+        "issued": {"date-parts": [[2020, 5]]},
+        "container-title": ["Revista de Pruebas"],
+    }
+    item.update(cambios)
+    return item
+
+
+def test_crossref_convierte_respuesta_guardada():
+    articulos = Crossref(client=cliente(RESPUESTA_CROSSREF)).buscar("bibliometrics", n=4)
+
+    assert [a.doi for a in articulos] == [
+        "10.1515/libr.1996.46.3.149",
+        "10.1515/libr.1996.46.4.217",
+        "10.1007/s11192-010-0159-y",
+        "10.12775/tsb.2012.009",
+    ]
+    primero = articulos[0]
+    assert primero.title == "Bibliometrics, Citation Analysis and Co-Citation Analysis: A Review of Literature I"
+    assert primero.authors == ("OSAREH, FARIDEH",)  # mayúsculas tal como las envía la editorial
+    assert primero.year == 1996
+    assert primero.journal == "Libri"
+    assert primero.citations == 269
+    assert primero.abstract == ""
+    assert articulos[2].authors == ("Vinkler, P.",)
+    assert articulos[2].year == 2010  # issued = [[2010, 1, 23]]
+    assert articulos[3].short_citation == "Żarczyńska (2012)"
+    assert articulos[3].journal == "Toruńskie Studia Bibliologiczne"
+
+
+def test_crossref_limpia_resumen_jats_y_descarta_obras_sin_autores():
+    # La página viene llena (2 de 2) pero se descarta una obra: se pide la siguiente.
+    peticiones = []
+    respuestas = (RESPUESTA_CROSSREF_CON_RESUMEN, pagina_crossref([], siguiente=None))
+    articulos = Crossref(client=cliente(*respuestas, peticiones=peticiones)).buscar("x", n=2)
+
+    assert len(peticiones) == 2
+    (articulo,) = articulos  # la segunda obra no tiene autores
+    assert articulo.doi == "10.4000/cybergeo.15463"
+    assert articulo.authors == ("Kosmopoulos, Christine", "Pumain, Denise")
+    assert articulo.abstract.startswith("La numérisation des ressources documentaires")
+    assert "<" not in articulo.abstract
+
+
+def test_crossref_parametros_de_la_peticion():
+    peticiones = []
+    Crossref(client=cliente(RESPUESTA_CROSSREF, peticiones=peticiones)).buscar("deep learning", n=4)
+
+    (peticion,) = peticiones
+    assert peticion.url.host == "api.crossref.org"
+    assert peticion.url.path == "/works"
+    params = peticion.url.params
+    assert params["query"] == "deep learning"
+    assert params["filter"] == "type:journal-article"
+    assert params["rows"] == "4"
+    assert params["cursor"] == "*"
+    # Sin orden explícito, con cursor los resultados dejan de ir por relevancia.
+    assert (params["sort"], params["order"]) == ("relevance", "desc")
+    assert "abstract" in params["select"].split(",")
+    assert "mailto" not in params  # el correo solo se envía si se configura
+
+
+def test_crossref_mailto_opcional():
+    peticiones = []
+    Crossref(mailto="yo@ejemplo.org", client=cliente(RESPUESTA_CROSSREF, peticiones=peticiones)).buscar("x", n=4)
+    assert peticiones[0].url.params["mailto"] == "yo@ejemplo.org"
+
+
+def test_crossref_sigue_el_cursor_si_descarta_obras():
+    # Página llena (rows=2) con una obra sin DOI: hay que pedir la siguiente con el cursor.
+    peticiones = []
+    respuestas = (
+        pagina_crossref([item_crossref(1, DOI=None), item_crossref(2)], siguiente="c2"),
+        pagina_crossref([item_crossref(3), item_crossref(4)], siguiente="c3"),
+    )
+    articulos = Crossref(client=cliente(*respuestas, peticiones=peticiones)).buscar("x", n=2)
+    assert [a.doi for a in articulos] == ["10.9999/2", "10.9999/3"]
+    assert [p.url.params["cursor"] for p in peticiones] == ["*", "c2"]
+
+
+def test_crossref_para_con_pagina_incompleta():
+    peticiones = []
+    articulos = Crossref(client=cliente(pagina_crossref([item_crossref(1)]), peticiones=peticiones)).buscar("x", n=5)
+    assert len(articulos) == 1
+    assert len(peticiones) == 1
+
+
+def test_crossref_para_sin_siguiente_cursor():
+    peticiones = []
+    respuesta = pagina_crossref([item_crossref(1, DOI=None), item_crossref(2)], siguiente=None)
+    articulos = Crossref(client=cliente(respuesta, peticiones=peticiones)).buscar("x", n=2)
+    assert len(articulos) == 1
+    assert len(peticiones) == 1
+
+
+def test_crossref_no_devuelve_mas_de_n():
+    assert len(Crossref(client=cliente(RESPUESTA_CROSSREF)).buscar("x", n=1)) == 1
+
+
+def test_crossref_n_invalido():
+    with pytest.raises(ValueError):
+        Crossref(client=cliente()).buscar("x", n=0)
+
+
+def test_crossref_hereda_los_reintentos():
+    esperas = []
+    fuente = Crossref(client=cliente(httpx.Response(429), RESPUESTA_CROSSREF), sleep=esperas.append)
+    assert len(fuente.buscar("x", n=4)) == 4
+    assert esperas == [1.0]
+
+
+@pytest.mark.parametrize(
+    "cambios",
+    [
+        {"DOI": None},
+        {"title": None},
+        {"title": []},
+        {"title": ["  "]},
+        {"author": []},
+        {"author": [{"given": "Ana"}]},  # sin apellido ni nombre de organización
+        {"issued": None},
+        {"issued": {"date-parts": [[None]]}},
+        {"DOI": "no-es-un-doi"},
+    ],
+)
+def test_crossref_descarta_obras_incompletas(cambios):
+    assert crossref_a_articulo(item_crossref(1, **cambios)) is None
+
+
+@pytest.mark.parametrize(
+    ("autor", "esperado"),
+    [
+        ({"family": "García Márquez", "given": "Gabriel"}, "García Márquez, Gabriel"),
+        ({"family": "García"}, "García"),
+        ({"name": "WHO Study Group"}, "WHO Study Group"),
+    ],
+)
+def test_crossref_formatos_de_autor(autor, esperado):
+    assert crossref_a_articulo(item_crossref(1, author=[autor])).authors == (esperado,)
+
+
+def test_crossref_campos_opcionales_ausentes():
+    item = item_crossref(1)
+    del item["container-title"]
+    articulo = crossref_a_articulo(item)
+    assert articulo.journal == ""
+    assert articulo.abstract == ""
+    assert articulo.citations == 0
+
+
+def test_limpiar_jats():
+    assert limpiar_jats("<jats:title>Abstract</jats:title><jats:p>Texto.</jats:p>") == "Texto."
+    assert limpiar_jats(
+        "<jats:sec><jats:title>Methods</jats:title><jats:p>Uso de <jats:italic>R</jats:italic> &amp; Python.</jats:p></jats:sec>"
+    ) == "Methods: Uso de R & Python."
+    assert limpiar_jats("<jats:p>Uno.</jats:p><jats:p>Dos.</jats:p>") == "Uno. Dos."
+    assert limpiar_jats("") == ""

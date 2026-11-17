@@ -1,0 +1,145 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "facets": {},
+    "next-cursor": "MjguMjU4MzY2LDEzNzg5Njc2NzMwMDAsMTAuMTI3NzUlMkZ0c2IuMjAxMi4wMDk=",
+    "total-results": 4848420,
+    "items": [
+      {
+        "DOI": "10.1515/libr.1996.46.3.149",
+        "title": [
+          "Bibliometrics, Citation Analysis and Co-Citation Analysis: A Review of Literature I"
+        ],
+        "author": [
+          {
+            "given": "FARIDEH",
+            "family": "OSAREH",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          }
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              1996
+            ]
+          ]
+        },
+        "container-title": [
+          "Libri"
+        ],
+        "is-referenced-by-count": 269
+      },
+      {
+        "DOI": "10.1515/libr.1996.46.4.217",
+        "title": [
+          "Bibliometrics, Citation Anatysis and Co-Citation Analysis: A Review of Literature II"
+        ],
+        "author": [
+          {
+            "given": "FARIDEH",
+            "family": "OSAREH",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          }
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              1996
+            ]
+          ]
+        },
+        "container-title": [
+          "Libri"
+        ],
+        "is-referenced-by-count": 45
+      },
+      {
+        "DOI": "10.1007/s11192-010-0159-y",
+        "title": [
+          "Indicators are the essence of scientometrics and bibliometrics"
+        ],
+        "author": [
+          {
+            "given": "P.",
+            "family": "Vinkler",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2010,
+              1,
+              23
+            ]
+          ]
+        },
+        "container-title": [
+          "Scientometrics"
+        ],
+        "is-referenced-by-count": 28
+      },
+      {
+        "DOI": "10.12775/tsb.2012.009",
+        "title": [
+          "Nicola De Bellis: Bibliometrics And Citation Analysis, from the Science Citation Index to Cybermetrics, Lanham, Toronto, Plymouth 2009"
+        ],
+        "author": [
+          {
+            "given": "Aneta",
+            "family": "Żarczyńska",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          }
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2012,
+              5,
+              9
+            ]
+          ]
+        },
+        "container-title": [
+          "Toruńskie Studia Bibliologiczne"
+        ],
+        "is-referenced-by-count": 21
+      }
+    ],
+    "items-per-page": 4,
+    "query": {
+      "start-index": 0,
+      "search-terms": "citation analysis bibliometrics"
+    }
+  }
+}

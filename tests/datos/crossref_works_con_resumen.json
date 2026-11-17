@@ -1,0 +1,93 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "facets": {},
+    "next-cursor": "MjcuMDgzNTkxLDE2NjU3NDEwMzIwMDAsMTAuNTUwNTclMkZhanJibS4yMDIyLjQuMy4zMw==",
+    "total-results": 1872585,
+    "items": [
+      {
+        "DOI": "10.4000/cybergeo.15463",
+        "title": [
+          "Citation, Citation, Citation: Bibliometrics, the web and the Social Sciences and Humanities"
+        ],
+        "author": [
+          {
+            "ORCID": "https://orcid.org/0000-0001-6219-9252",
+            "authenticated-orcid": false,
+            "given": "Christine",
+            "family": "Kosmopoulos",
+            "sequence": "first",
+            "affiliation": [
+              {
+                "name": "France"
+              }
+            ],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          },
+          {
+            "ORCID": "https://orcid.org/0000-0002-0730-4563",
+            "authenticated-orcid": false,
+            "given": "Denise",
+            "family": "Pumain",
+            "sequence": "additional",
+            "affiliation": [
+              {
+                "name": "France"
+              }
+            ],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          }
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2011
+            ]
+          ]
+        },
+        "container-title": [
+          "Cybergeo"
+        ],
+        "abstract": "<jats:p>La numérisation des ressources documentaires et la généralisation des procédures de l'évaluation scientifique renouvellent la question des usages de la bibliométrie. L'article recense les principaux outils de référence et les indicateurs en vogue. Il démontre que ces outils ne restituent que très imparfaitement la réalité de la production de recherche en sciences humaines et sociales. Il analyse les stratégies de publication émergentes sur internet et préconise des solutions pour un accès libre et partagé à l'information scientifique.</jats:p>",
+        "is-referenced-by-count": 6
+      },
+      {
+        "DOI": "10.55057/ajrbm.2022.4.3.33",
+        "title": [
+          "Advertising and Job Creations in High-tech Blockchain: A Bibliometrics Citation Analysis"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2022,
+              10,
+              1
+            ]
+          ]
+        },
+        "container-title": [
+          "Asian Journal of Research in Business and Management"
+        ],
+        "abstract": "<jats:p>The purpose of this paper is to explore the status of scholarly research on the review and bibliometrics citation analysis works on an overall journal related to research that engages advertising and job creations in blockchain technology. To execute the bibliometric analysis, data is extracted from the web of science (WOS) database. Data are selected through an inclusion and exclusion process called the PRISMA method. The final selected data are then assessed using the VOSviewer software to create a bibliometrics descriptive and an analytical citation analysis. The scarce number of blockchain bibliometric research; and the unavailability of information to researchers on citations, co-authorship, and co-occurrences of keywords in relation to advertising and job-creations incorporating high technology blockchain has motivated this research. Through a descriptive analysis, the study found that 2,215 article with 33,649 citations related to advertising and job creation in blockchain technology; and through the networking analysis showed that the highest citation counts by Journal of business research with 823 citations, Frishammar, Johan; Parida, Vinit; Westerberg, Mats as author with 339 counts, the Politecn Milan institution with 389 counts, and the U.S.A as country with 1,423 counts. This study has its added value as the analysis provides a bird’s eye view of citations and networking linkages globally benefitting researchers. This study also benefits young researchers to engage in developing novel and ground breaking empirical research ideas in the field of advertising, job creations and blockchain technology.</jats:p>",
+        "is-referenced-by-count": 0
+      }
+    ],
+    "items-per-page": 2,
+    "query": {
+      "start-index": 0,
+      "search-terms": "citation analysis bibliometrics"
+    }
+  }
+}
