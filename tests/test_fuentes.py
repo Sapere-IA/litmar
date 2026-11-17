@@ -6,7 +6,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from litmar.fuentes import Fuente, OpenAlex
+from litmar.fuentes import Arxiv, Fuente, OpenAlex
 from litmar.fuentes.openalex import reconstruir_resumen
 
 # Respuesta real de
@@ -183,3 +183,95 @@ def test_reconstruir_resumen():
     indice = {"in": [3, 5], "Despite": [0], "growing": [1], "interest": [2], "AI": [4], "ethics": [6]}
     assert reconstruir_resumen(indice) == "Despite growing interest in AI in ethics"
     assert reconstruir_resumen(None) == ""
+
+
+# --- arXiv --------------------------------------------------------------------
+
+
+def respuesta_arxiv(*entradas):
+    return httpx.Response(
+        200,
+        text=(
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<feed xmlns="http://www.w3.org/2005/Atom" '
+            'xmlns:arxiv="http://arxiv.org/schemas/atom">'
+            + "".join(entradas)
+            + "</feed>"
+        ),
+    )
+
+
+def entrada_arxiv(doi=True, title="A paper", arxiv_id="2301.00001"):
+    campo_doi = "<arxiv:doi>10.1234/example</arxiv:doi>" if doi else ""
+    return (
+        "<entry>"
+        f"<id>https://arxiv.org/abs/{arxiv_id}</id>"
+        f"<title>{title}</title>"
+        "<published>2023-01-02T03:04:05Z</published>"
+        "<summary>Paper abstract.</summary>"
+        "<author><name>Jane Doe</name></author>"
+        f"{campo_doi}"
+        "<arxiv:journal_ref>Journal of Tests</arxiv:journal_ref>"
+        "</entry>"
+    )
+
+
+def test_arxiv_convierte_entrada_atom_a_articulo():
+    articulos = Arxiv(client=cliente(respuesta_arxiv(entrada_arxiv()))).buscar("quantum")
+
+    (articulo,) = articulos
+    assert articulo.title == "A paper"
+    assert articulo.authors == ("Jane Doe",)
+    assert articulo.year == 2023
+    assert articulo.doi == "10.1234/example"
+    assert articulo.journal == "Journal of Tests"
+    assert articulo.abstract == "Paper abstract."
+    assert articulo.citations == 0
+
+
+def test_arxiv_parametros_de_busqueda():
+    peticiones = []
+    Arxiv(client=cliente(respuesta_arxiv(entrada_arxiv()), peticiones=peticiones)).buscar(
+        "deep learning", n=4
+    )
+
+    (peticion,) = peticiones
+    assert peticion.url.host == "export.arxiv.org"
+    assert peticion.url.path == "/api/query"
+    assert peticion.url.params["search_query"] == "all:deep learning"
+    assert peticion.url.params["start"] == "0"
+    assert peticion.url.params["max_results"] == "4"
+
+
+def test_arxiv_omite_entradas_sin_doi_y_respeta_el_intervalo():
+    esperas = []
+    peticiones = []
+    fuente = Arxiv(
+        client=cliente(
+            respuesta_arxiv(entrada_arxiv(doi=False)),
+            respuesta_arxiv(entrada_arxiv(arxiv_id="2301.00002")),
+            peticiones=peticiones,
+        ),
+        sleep=esperas.append,
+    )
+
+    articulos = fuente.buscar("quantum", n=1)
+
+    assert [articulo.doi for articulo in articulos] == ["10.1234/example"]
+    assert [peticion.url.params["start"] for peticion in peticiones] == ["0", "1"]
+    assert esperas == [3.0]
+
+
+@pytest.mark.parametrize(("consulta", "n"), [("", 1), ("   ", 1), ("x", 0)])
+def test_arxiv_rechaza_consulta_o_cantidad_invalida(consulta, n):
+    with pytest.raises(ValueError):
+        Arxiv(client=cliente()).buscar(consulta, n=n)
+
+
+def test_arxiv_propaga_errores_de_la_api():
+    feed_error = respuesta_arxiv(
+        '<entry><id>https://arxiv.org/api/errors#bad_query</id>'
+        "<title>Error</title><summary>bad query</summary></entry>"
+    )
+    with pytest.raises(ValueError, match="bad query"):
+        Arxiv(client=cliente(feed_error)).buscar("quantum")

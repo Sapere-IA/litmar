@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from threading import Lock
 from typing import Any, Self
 
 import httpx
@@ -33,14 +34,20 @@ class Fuente(ABC):
         max_retries: int = 3,
         backoff: float = 1.0,
         max_wait: float = 60.0,
+        min_request_interval: float = 0.0,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        if min_request_interval < 0:
+            raise ValueError("min_request_interval no puede ser negativo")
         self._owns_client = client is None
         self.client = client or httpx.Client(timeout=timeout)
         self.max_retries = max_retries
         self.backoff = backoff  # espera del primer reintento; se duplica en cada uno
         self.max_wait = max_wait  # si el servidor pide esperar más, se falla sin esperar
+        self.min_request_interval = min_request_interval
         self._sleep = sleep
+        self._request_lock = Lock()
+        self._last_request_at: float | None = None
 
     @abstractmethod
     def buscar(self, consulta: str, n: int = 10) -> list[Articulo]:
@@ -53,10 +60,26 @@ class Fuente(ABC):
         headers: Mapping[str, str] | None = None,
     ) -> Any:
         """GET con reintentos. Lanza httpx.HTTPStatusError o httpx.TransportError si se agotan."""
+        return self._get_response(url, params, headers).json()
+
+    def _get_response(
+        self,
+        url: str,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> httpx.Response:
+        """GET con reintentos y el intervalo mínimo configurado entre peticiones."""
         for intento in range(self.max_retries + 1):
             ultimo = intento == self.max_retries
             try:
-                respuesta = self.client.get(url, params=params, headers=headers)
+                with self._request_lock:
+                    if self._last_request_at is not None:
+                        transcurrido = time.monotonic() - self._last_request_at
+                        espera = self.min_request_interval - transcurrido
+                        if espera > 0:
+                            self._sleep(espera)
+                    self._last_request_at = time.monotonic()
+                    respuesta = self.client.get(url, params=params, headers=headers)
             except httpx.TransportError:  # timeout, conexión rechazada, DNS...
                 if ultimo:
                     raise
@@ -64,7 +87,7 @@ class Fuente(ABC):
             else:
                 if respuesta.status_code not in ESTADOS_REINTENTABLES or ultimo:
                     respuesta.raise_for_status()
-                    return respuesta.json()
+                    return respuesta
                 espera = self._espera_retry_after(respuesta)
                 if espera is None:
                     espera = self._espera_exponencial(intento)
